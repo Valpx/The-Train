@@ -1,10 +1,13 @@
 #define GLFW_INCLUDE_NONE
+
 #include "GLFW/glfw3.h"
 #include "glad/glad.h"
 #include "glbasimac/glbi_engine.hpp"
 #include "glbasimac/glbi_texture.hpp"
+#include "nlohmann/json.hpp"
 #include "../include/render.hpp"
 
+#include <fstream>
 #include <iostream>
 
 using namespace glbasimac;
@@ -21,7 +24,6 @@ static const double FRAMERATE_IN_SECONDS = 1. / 30.;
 
 bool pressed = false;
 
-/* Error handling function */
 void onError(int error, const char *description)
 {
     std::cout << "GLFW Error (" << error << ") : " << description << std::endl;
@@ -71,22 +73,46 @@ void onKey(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods
     }
 }
 
-void onMouseButton(GLFWwindow *window, int button, int action, int /*mods*/)
+void usage()
 {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-        std::cout << "Pressed in " << xpos << " " << ypos << std::endl;
-    }
+    std::cerr << "Usage: " << "./the_train filename.json" << std::endl;
+}
+
+bool checkSizeGrid(const nlohmann::json &data)
+{
+    return (int)data["size_grid"] >= 10.0f;
 }
 
 int main(int argc, char **argv)
 {
+    if (argc != 2)
+    {
+        usage();
+        return 1;
+    }
+
+    /* Open the file in read mode */
+    std::ifstream file(argv[1]);
+    if (!file)
+    {
+        std::cerr << "ERROR: Cannot open the file" << std::endl;
+        return 1;
+    }
+
+    /* Load the json file */
+    nlohmann::json data;
+    file >> data;
+
+    if (!checkSizeGrid(data))
+    {
+        std::cerr << "ERROR: Grid size must be at least 10" << std::endl;
+        return 1;
+    }
+
     /* GLFW initialisation */
     GLFWwindow *window;
     if (!glfwInit())
-        return -1;
+        return 1;
 
     /* Callback to a function if an error is rised by GLFW */
     glfwSetErrorCallback(onError);
@@ -97,7 +123,7 @@ int main(int argc, char **argv)
     {
         // If no context created : exit !
         glfwTerminate();
-        return -1;
+        return 1;
     }
 
     /* Make the window's context current */
@@ -106,11 +132,10 @@ int main(int argc, char **argv)
     std::cout << "Loading GL extension" << std::endl;
     // Intialize glad (loads the OpenGL functions)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-        return -1;
+        return 1;
 
     glfwSetWindowSizeCallback(window, onWindowResized);
     glfwSetKeyCallback(window, onKey);
-    glfwSetMouseButtonCallback(window, onMouseButton);
 
     std::cout << "Engine init" << std::endl;
     myEngine.mode2D = false; // Set engine to 3D mode
@@ -118,7 +143,7 @@ int main(int argc, char **argv)
     onWindowResized(window, WINDOW_WIDTH, WINDOW_HEIGHT);
     CHECK_GL;
 
-    initScene();
+    initScene(data);
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
