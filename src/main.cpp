@@ -11,7 +11,7 @@ using namespace glbasimac;
 using namespace STP3D;
 
 /* Window properties */
-static const unsigned int WINDOW_WIDTH = 800;
+static const unsigned int WINDOW_WIDTH = 1000;
 static const unsigned int WINDOW_HEIGHT = 800;
 static const char WINDOW_TITLE[] = "The Train";
 static float aspectRatio = 1.0f;
