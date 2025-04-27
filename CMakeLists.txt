@@ -49,5 +49,5 @@ target_link_libraries(
     glad
     glbasimac
     nlohmann_json
-    ${OPENGL_gl_LIBRARY}
+    OpenGL::GL
 )
