@@ -10,7 +10,7 @@ GLBI_Convex_2D_Shape ground{3};
 
 void initGround(const nlohmann::json &data)
 {
-    float sizeGrid = (int)data["size_grid"] * 10.0f / 2.0f;
+    float sizeGrid = (int)data["size_grid"] * CELL_SIZE / 2.0f;
     ground.initShape({-sizeGrid, -sizeGrid, 0.0f,
                       sizeGrid, -sizeGrid, 0.0f,
                       sizeGrid, sizeGrid, 0.0f,

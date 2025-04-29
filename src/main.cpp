@@ -78,9 +78,19 @@ void usage()
     std::cerr << "Usage: " << "./the_train filename.json" << std::endl;
 }
 
-bool checkSizeGrid(const nlohmann::json &data)
+bool checkGridSize(const nlohmann::json &data)
 {
-    return (int)data["size_grid"] >= 10.0f;
+    return (int)data["size_grid"] >= 10;
+}
+
+bool checkData(const nlohmann::json &data)
+{
+    if (!checkGridSize(data))
+    {
+        std::cerr << "ERROR: Grid size must be at least 10" << std::endl;
+        return false;
+    }
+    return true;
 }
 
 int main(int argc, char **argv)
@@ -103,11 +113,8 @@ int main(int argc, char **argv)
     nlohmann::json data;
     file >> data;
 
-    if (!checkSizeGrid(data))
-    {
-        std::cerr << "ERROR: Grid size must be at least 10" << std::endl;
+    if (!checkData(data))
         return 1;
-    }
 
     /* GLFW initialisation */
     GLFWwindow *window;
