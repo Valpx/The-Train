@@ -5,10 +5,12 @@
 #include "glbasimac/glbi_engine.hpp"
 #include "glbasimac/glbi_texture.hpp"
 #include "nlohmann/json.hpp"
-#include "../include/render.hpp"
+#include "render.hpp"
+#include "coord.hpp"
 
 #include <fstream>
 #include <iostream>
+#include <unordered_set>
 
 using namespace glbasimac;
 using namespace STP3D;
@@ -22,7 +24,7 @@ static float aspectRatio = 1.0f;
 /* Minimal time wanted between two images */
 static const double FRAMERATE_IN_SECONDS = 1. / 30.;
 
-bool pressed = false;
+bool key_down = false;
 
 void onError(int error, const char *description)
 {
@@ -41,11 +43,11 @@ void onWindowResized(GLFWwindow * /*window*/, int width, int height)
 void onKey(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/)
 {
     if (action == GLFW_RELEASE)
-        pressed = false;
+        key_down = false;
 
-    if (action == GLFW_PRESS || pressed)
+    if (action == GLFW_PRESS || key_down)
     {
-        pressed = true;
+        key_down = true;
         switch (key)
         {
         case GLFW_KEY_A:
@@ -78,19 +80,86 @@ void usage()
     std::cerr << "Usage: " << "./the_train filename.json" << std::endl;
 }
 
-bool checkGridSize(const nlohmann::json &data)
+bool validSizeGridFormat(const nlohmann::json &data)
 {
-    return (int)data["size_grid"] >= 10;
+    return data.contains("size_grid") && data["size_grid"].is_number_integer();
 }
 
-bool checkData(const nlohmann::json &data)
+bool validOriginFormat(const nlohmann::json &data)
 {
-    if (!checkGridSize(data))
+    return data.contains("origin") && data["origin"].is_array() && data["origin"].size() == 2 && data["origin"][0].is_number_integer() && data["origin"][1].is_number_integer();
+}
+
+bool validPathFormat(const nlohmann::json &data)
+{
+    if (!data.contains("path") || !data["path"].is_array())
+        return false;
+    for (const auto &e : data["path"])
+    {
+        if (!e.is_array() || e.size() != 2 || !e[0].is_number_integer() || !e[1].is_number_integer())
+            return false;
+    }
+    return true;
+}
+
+bool checkDataFormat(const nlohmann::json &data)
+{
+    if (!validSizeGridFormat(data) || !validOriginFormat(data) || !validPathFormat(data))
+    {
+        std::cerr << "ERROR: Invalid json file" << std::endl
+                  << "size_grid: int" << std::endl
+                  << "origin: [int, int]" << std::endl
+                  << "path: [[int, int], ...]" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool checkGridSize(const nlohmann::json &data)
+{
+    if (data["size_grid"].get<int>() < 10)
     {
         std::cerr << "ERROR: Grid size must be at least 10" << std::endl;
         return false;
     }
     return true;
+}
+
+int manhattanDistance(const Coord &a, const Coord &b)
+{
+    return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+}
+
+bool checkPath(const nlohmann::json &data)
+{
+    std::unordered_set<Coord, CoordHash> set;
+    Coord prev;
+
+    for (size_t i = 0; i < data["path"].size(); ++i)
+    {
+        const auto &e = data["path"][i];
+        Coord current{e[0].get<int>(), e[1].get<int>()};
+
+        if (set.count(current))
+        {
+            std::cerr << "ERROR: The path contains a duplicate" << std::endl;
+            return false;
+        }
+        set.insert(current);
+
+        if (i > 0 && manhattanDistance(current, prev) != 1)
+        {
+            std::cerr << "ERROR The current rail must be adjacent to the previous rail" << std::endl;
+            return false;
+        }
+        prev = current;
+    }
+    return true;
+}
+
+bool checkData(const nlohmann::json &data)
+{
+    return checkDataFormat(data) && checkGridSize(data) && checkPath(data);
 }
 
 int main(int argc, char **argv)
@@ -112,7 +181,6 @@ int main(int argc, char **argv)
     /* Load the json file */
     nlohmann::json data;
     file >> data;
-
     if (!checkData(data))
         return 1;
 
