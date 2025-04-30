@@ -5,7 +5,7 @@
 #include "glbasimac/glbi_engine.hpp"
 #include "glbasimac/glbi_texture.hpp"
 #include "nlohmann/json.hpp"
-#include "render.hpp"
+#include "draw_scene.hpp"
 #include "vector.hpp"
 
 #include <fstream>
@@ -22,7 +22,7 @@ static const char WINDOW_TITLE[] = "The Train";
 static float aspectRatio = 1.0f;
 
 /* Minimal time wanted between two images */
-static const double FRAMERATE_IN_SECONDS = 1. / 30.;
+static const double FRAMERATE_IN_SECONDS = 1.0 / 30.0;
 
 bool key_down = false;
 

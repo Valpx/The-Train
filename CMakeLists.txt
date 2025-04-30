@@ -6,7 +6,7 @@ project(TheTrain)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_COLOR_MAKEFILE ON)
-add_executable(the_train src/main.cpp src/render.cpp)
+add_executable(the_train src/main.cpp src/draw_scene.cpp)
 
 # Librairies
 

@@ -1,0 +1,132 @@
+#include <math.h>
+
+#include "../include/draw_scene.hpp"
+
+/* Camera settings */
+float angle_theta = -90.0f; // Angle between x axis and viewpoint
+float angle_phy = 30.0f;    // Angle between z axis and viewpoint
+float dist_zoom = 25.0f;    // Distance between origin and viewpoint
+
+/* Ground */
+static const float CELL_SIZE = 10.0f;
+GLBI_Convex_2D_Shape ground{3};
+
+/* Straight rail */
+static const float SR = 0.5f;
+static const float POS_X_RAIL1 = 3.0f;
+static const float POS_X_RAIL2 = 7.0f;
+IndexedMesh *straightRail = NULL;
+
+/* Ballast */
+static const int BALLAST_COUNT = 5;
+static const float RR = 0.25f;
+static const int BALLAST_X_START = 2;
+static const int BALLAST_X_END = 8;
+IndexedMesh *ballast = NULL;
+
+GLBI_Engine myEngine;
+
+void initGround(const nlohmann::json &data)
+{
+    float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE / 2.0f;
+    ground.initShape({-sizeGrid, -sizeGrid, 0.0f,
+                      sizeGrid, -sizeGrid, 0.0f,
+                      sizeGrid, sizeGrid, 0.0f,
+                      -sizeGrid, sizeGrid, 0.0f});
+    ground.changeNature(GL_TRIANGLE_FAN);
+}
+
+void initStraightRail()
+{
+    const unsigned int vertex_number = 8;
+    std::vector<float> vertex_coord = {
+        0.0f, 0.0f, 0.0f,      // v0
+        SR, 0.0f, 0.0f,        // v1
+        SR, CELL_SIZE, 0.0f,   // v2
+        0.0f, CELL_SIZE, 0.0f, // v3
+        0.0f, 0.0f, SR,        // v4
+        0.0f, CELL_SIZE, SR,   // v5
+        SR, CELL_SIZE, SR,     // v6
+        SR, 0.0f, SR           // v7
+    };
+    const unsigned int triangle_number = 12;
+    std::vector<unsigned int> triangle_index = {
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 5,
+        0, 4, 5,
+        2, 3, 6,
+        3, 5, 6,
+        0, 1, 7,
+        0, 4, 7,
+        1, 2, 7,
+        2, 6, 7,
+        4, 5, 7,
+        5, 6, 7};
+
+    straightRail = new IndexedMesh(triangle_number, vertex_number);
+    straightRail->addOneBuffer(0, 3, vertex_coord.data(), "Coord", true);
+    straightRail->addIndexBuffer(triangle_index.data(), true);
+    straightRail->createVAO();
+}
+
+void initBallast()
+{
+    ballast = basicCylinder(BALLAST_X_END - BALLAST_X_START, RR);
+    ballast->createVAO();
+}
+
+void initScene(const nlohmann::json &data)
+{
+    initGround(data);
+    initStraightRail();
+    initBallast();
+}
+
+void drawGround()
+{
+    myEngine.setFlatColor(0.2f, 0.0f, 0.0f);
+    ground.drawShape();
+}
+
+void drawStraightTrack()
+{
+    myEngine.setFlatColor(0.2f, 0.2f, 0.2f);
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL1 - (SR / 2.0f), 0.0f, RR * 2.0f});
+    myEngine.updateMvMatrix();
+    straightRail->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL2 - (SR / 2.0f), 0.0f, RR * 2.0f});
+    myEngine.updateMvMatrix();
+    straightRail->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.setFlatColor(0.4f, 0.2f, 0.0f);
+
+    const float SX = (CELL_SIZE - (RR * 2.0f) * BALLAST_COUNT) / 10.0f;
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR), BALLAST_X_START, RR});
+    myEngine.updateMvMatrix();
+    ballast->draw();
+    for (auto i = 0; i < 4; i++)
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR) * 2.0f, 0.0f, 0.0f});
+        myEngine.updateMvMatrix();
+        ballast->draw();
+    }
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+}
+
+void renderScene()
+{
+    drawGround();
+    drawStraightTrack();
+}
