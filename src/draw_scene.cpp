@@ -18,21 +18,26 @@ static const float POS_X_RAIL2 = 7.0f;
 IndexedMesh *straightRail = NULL;
 
 /* Ballast */
-static const int BALLAST_COUNT = 5;
+static const int STRAIGHT_TRACK_BALLAST_COUNT = 5;
 static const float RR = 0.25f;
-static const int BALLAST_X_START = 2;
-static const int BALLAST_X_END = 8;
+static const float BALLAST_X_START = 2.0f;
+static const float BALLAST_X_END = 8.0f;
 IndexedMesh *ballast = NULL;
+
+/* Curved rail */
+static const int CURVED_TRACK_BALLAST_COUNT = 3;
+GLBI_Convex_2D_Shape innerCurvedRail{3};
+GLBI_Convex_2D_Shape externalCurvedRail{3};
 
 GLBI_Engine myEngine;
 
 void initGround(const nlohmann::json &data)
 {
-    float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE / 2.0f;
-    ground.initShape({-sizeGrid, -sizeGrid, 0.0f,
-                      sizeGrid, -sizeGrid, 0.0f,
+    float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE;
+    ground.initShape({0.0f, 0.0f, 0.0f,
+                      sizeGrid, 0.0f, 0.0f,
                       sizeGrid, sizeGrid, 0.0f,
-                      -sizeGrid, sizeGrid, 0.0f});
+                      0.0f, sizeGrid, 0.0f});
     ground.changeNature(GL_TRIANGLE_FAN);
 }
 
@@ -49,6 +54,7 @@ void initStraightRail()
         SR, CELL_SIZE, SR,     // v6
         SR, 0.0f, SR           // v7
     };
+
     const unsigned int triangle_number = 12;
     std::vector<unsigned int> triangle_index = {
         0, 1, 2,
@@ -109,7 +115,7 @@ void drawStraightTrack()
 
     myEngine.setFlatColor(0.4f, 0.2f, 0.0f);
 
-    const float SX = (CELL_SIZE - (RR * 2.0f) * BALLAST_COUNT) / 10.0f;
+    const float SX = (CELL_SIZE - (RR * 2.0f) * STRAIGHT_TRACK_BALLAST_COUNT) / 10.0f;
     myEngine.mvMatrixStack.pushMatrix();
     myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR), BALLAST_X_START, RR});
