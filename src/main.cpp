@@ -6,7 +6,7 @@
 #include "glbasimac/glbi_texture.hpp"
 #include "nlohmann/json.hpp"
 #include "render.hpp"
-#include "coord.hpp"
+#include "vector.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -125,31 +125,31 @@ bool checkGridSize(const nlohmann::json &data)
     return true;
 }
 
-int manhattanDistance(const Coord &a, const Coord &b)
+int manhattanDistance(const Vector2D &a, const Vector2D &b)
 {
     return std::abs(a.x - b.x) + std::abs(a.y - b.y);
 }
 
 bool checkPath(const nlohmann::json &data)
 {
-    std::unordered_set<Coord, CoordHash> set;
-    Coord prev;
+    std::unordered_set<Vector2D, Vector2DHash> set;
+    Vector2D prev;
 
     for (size_t i = 0; i < data["path"].size(); ++i)
     {
         const auto &e = data["path"][i];
-        Coord current{e[0].get<int>(), e[1].get<int>()};
+        Vector2D current{e[0].get<int>(), e[1].get<int>()};
 
         if (set.count(current))
         {
-            std::cerr << "ERROR: The path contains a duplicate" << std::endl;
+            std::cerr << "ERROR: The path contains a duplicate (" << current.x << ", " << current.y << ")" << std::endl;
             return false;
         }
         set.insert(current);
 
         if (i > 0 && manhattanDistance(current, prev) != 1)
         {
-            std::cerr << "ERROR The current rail must be adjacent to the previous rail" << std::endl;
+            std::cerr << "ERROR: The current rail must be adjacent to the previous rail" << std::endl;
             return false;
         }
         prev = current;

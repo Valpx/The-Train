@@ -2,19 +2,19 @@
 
 #include <functional>
 
-struct Coord
+struct Vector2D
 {
     int x, y;
 
-    bool operator==(const Coord &other) const
+    bool operator==(const Vector2D &other) const
     {
         return x == other.x && y == other.y;
     }
 };
 
-struct CoordHash
+struct Vector2DHash
 {
-    std::size_t operator()(const Coord &c) const
+    std::size_t operator()(const Vector2D &c) const
     {
         return std::hash<int>()(c.x) ^ (std::hash<int>()(c.y) << 1);
     }
