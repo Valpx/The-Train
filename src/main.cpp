@@ -125,11 +125,6 @@ bool checkGridSize(const nlohmann::json &data)
     return true;
 }
 
-int manhattanDistance(const Vector2D &a, const Vector2D &b)
-{
-    return std::abs(a.x - b.x) + std::abs(a.y - b.y);
-}
-
 bool checkPath(const nlohmann::json &data)
 {
     std::unordered_set<Vector2D, Vector2DHash> set;
@@ -243,7 +238,7 @@ int main(int argc, char **argv)
         myEngine.setViewMatrix(viewMatrix);
         myEngine.updateMvMatrix();
 
-        renderScene();
+        renderScene(data);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);

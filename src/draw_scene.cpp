@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "../include/draw_scene.hpp"
+#include "draw_scene.hpp"
 
 /* Camera settings */
 float angle_theta = -90.0f; // Angle between x axis and viewpoint
@@ -22,7 +22,7 @@ IndexedMesh *straightRail = NULL;
 
 /* Curved rail */
 static const int CURVED_TRACK_BALLAST_COUNT = 3;
-GLBI_Convex_2D_Shape innerCurvedRail{3};
+GLBI_Convex_2D_Shape iternalCurvedRail{3};
 GLBI_Convex_2D_Shape externalCurvedRail{3};
 
 /* Ballast */
@@ -93,7 +93,7 @@ void add_triangle(std::vector<float> &in_coord, Vector3D a, Vector3D b, Vector3D
     in_coord.emplace_back(c.z);
 }
 
-void initInternCurvedRail()
+void initInternalCurvedRail()
 {
     const int subdivision = 10;
     std::vector<float> in_coord{};
@@ -146,8 +146,8 @@ void initInternCurvedRail()
         }
     }
 
-    innerCurvedRail.initShape(in_coord);
-    innerCurvedRail.changeNature(GL_TRIANGLES);
+    iternalCurvedRail.initShape(in_coord);
+    iternalCurvedRail.changeNature(GL_TRIANGLES);
 }
 
 void initExternalCurvedRail()
@@ -217,7 +217,7 @@ void initScene(const nlohmann::json &data)
     initGround(data);
     initStraightRail();
     initBallast();
-    initInternCurvedRail();
+    initInternalCurvedRail();
     initExternalCurvedRail();
 }
 
@@ -229,6 +229,7 @@ void drawGround()
 
 void drawStraightTrack()
 {
+    /* Rails */
     myEngine.setFlatColor(0.2f, 0.2f, 0.2f);
 
     myEngine.mvMatrixStack.pushMatrix();
@@ -245,17 +246,17 @@ void drawStraightTrack()
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 
+    /* Balasts */
     myEngine.setFlatColor(0.4f, 0.2f, 0.0f);
 
     const float SX = (CELL_SIZE - (RR * 2.0f) * STRAIGHT_TRACK_BALLAST_COUNT) / 10.0f;
     myEngine.mvMatrixStack.pushMatrix();
     myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
-    myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR), BALLAST_X_START, RR});
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, BALLAST_X_START, RR});
     myEngine.updateMvMatrix();
-    ballast->draw();
-    for (auto i = 0; i < 4; i++)
+    for (auto i = 0; i < STRAIGHT_TRACK_BALLAST_COUNT; i++)
     {
-        myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR) * 2.0f, 0.0f, 0.0f});
+        myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR) * (i == 0 ? 1.0f : 2.0f), 0.0f, 0.0f});
         myEngine.updateMvMatrix();
         ballast->draw();
     }
@@ -263,17 +264,70 @@ void drawStraightTrack()
     myEngine.updateMvMatrix();
 }
 
-void drawCurvedRail()
+void drawCurvedTrack()
 {
+    /* Rails */
     myEngine.setFlatColor(0.2f, 0.2f, 0.2f);
 
-    innerCurvedRail.drawShape();
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, 0.0f, RR * 2.0f});
+    myEngine.updateMvMatrix();
+    iternalCurvedRail.drawShape();
     externalCurvedRail.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Balasts */
+    myEngine.setFlatColor(0.4f, 0.2f, 0.0f);
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(5.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(5.0f * M_PI / 12.0f), 0.0f});
+    myEngine.mvMatrixStack.addRotation(M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    ballast->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(3.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(3.0f * M_PI / 12.0f), 0.0f});
+    myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    ballast->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(M_PI / 12.0f), BALLAST_X_START * std::sin(M_PI / 12.0f), 0.0f});
+    myEngine.mvMatrixStack.addRotation(5.0f * M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    ballast->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
 }
 
-void renderScene()
+void drawTracks(const nlohmann::json &data)
+{
+    auto path = data["path"].get<std::vector<std::vector<int>>>();
+    for (auto i = 0; i < path.size(); i++)
+    {
+        if (path.size() == 1)
+        {
+            // TO DO
+        }
+        else if (path.size() == 2)
+        {
+            // TO DO
+        }
+        else
+        {
+            auto prev = path[i == 0 ? path.size() - 1 : i - 1];
+        }
+    }
+}
+
+void renderScene(const nlohmann::json &data)
 {
     drawGround();
-    // drawStraightTrack();
-    drawCurvedRail();
+    drawStraightTrack();
+    drawCurvedTrack();
 }

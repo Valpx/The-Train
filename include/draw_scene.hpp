@@ -20,4 +20,4 @@ extern GLBI_Engine myEngine;
 
 void initScene(const nlohmann::json &);
 
-void renderScene();
+void renderScene(const nlohmann::json &);

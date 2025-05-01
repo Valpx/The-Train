@@ -19,3 +19,8 @@ struct Vector2DHash
         return std::hash<int>()(c.x) ^ (std::hash<int>()(c.y) << 1);
     }
 };
+
+int manhattanDistance(const Vector2D &a, const Vector2D &b)
+{
+    return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+}
