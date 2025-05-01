@@ -32,6 +32,7 @@ static const float RR = 0.25f;
 static const float BALLAST_X_START = 2.0f;
 static const float BALLAST_X_END = 8.0f;
 IndexedMesh *ballast = NULL;
+StandardMesh *ballast_side = NULL;
 
 /* Station */
 static const float STATION_GROUND_HEIGHT_1 = CELL_SIZE / 3.0f;
@@ -46,6 +47,8 @@ static const float STRIP_WIDTH = CELL_SIZE - 0.5f;
 static const float STRIP_HEIGHT = 0.1f;
 static const float STRIP_LENGTH = 1.5f;
 GLBI_Convex_2D_Shape strip{3};
+
+/* Train */
 
 GLBI_Engine myEngine;
 
@@ -222,10 +225,17 @@ void initExternalCurvedRail()
     externalCurvedRail.initShape(in_coord);
     externalCurvedRail.changeNature(GL_TRIANGLES);
 }
+
 void initBallast()
 {
     ballast = basicCylinder(BALLAST_X_END - BALLAST_X_START, RR);
     ballast->createVAO();
+}
+
+void initBallastSide()
+{
+    ballast_side = basicCone(0.0f, RR);
+    ballast_side->createVAO();
 }
 
 void initStationGround1()
@@ -267,6 +277,7 @@ void initScene(const nlohmann::json &data)
     initGround(data);
     initStraightRail();
     initBallast();
+    initBallastSide();
     initInternalCurvedRail();
     initExternalCurvedRail();
     initStationGround1();
@@ -313,6 +324,15 @@ void drawStraightTrack()
         myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR) * (i == 0 ? 1.0f : 2.0f), 0.0f, 0.0f});
         myEngine.updateMvMatrix();
         ballast->draw();
+
+        ballast_side->draw();
+
+        myEngine.mvMatrixStack.pushMatrix();
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, BALLAST_X_END - BALLAST_X_START, 0.0f});
+        myEngine.updateMvMatrix();
+        ballast_side->draw();
+        myEngine.mvMatrixStack.popMatrix();
+        myEngine.updateMvMatrix();
     }
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
@@ -530,5 +550,6 @@ void renderScene(const nlohmann::json &data)
 {
     drawGround();
     drawTracks(data);
-    drawStation(data);
+    // drawStation(data);
+    myEngine.setFlatColor(0.6f, 0.5f, 0.0f);
 }
