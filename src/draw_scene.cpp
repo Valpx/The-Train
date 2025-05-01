@@ -1,5 +1,6 @@
 #include <cmath>
 
+#include <functional>
 #include "draw_scene.hpp"
 #include "vector2d.hpp"
 
@@ -19,7 +20,7 @@ static const float POS_X_RAIL2 = 7.0f;
 
 /* Straight rail */
 static const int STRAIGHT_TRACK_BALLAST_COUNT = 5;
-IndexedMesh *straightRail = NULL;
+GLBI_Convex_2D_Shape straightRail{3};
 
 /* Curved rail */
 static const int CURVED_TRACK_BALLAST_COUNT = 3;
@@ -32,52 +33,21 @@ static const float BALLAST_X_START = 2.0f;
 static const float BALLAST_X_END = 8.0f;
 IndexedMesh *ballast = NULL;
 
+/* Station */
+static const float STATION_GROUND_HEIGHT_1 = CELL_SIZE / 3.0f;
+GLBI_Convex_2D_Shape station_ground_1{3};
+static const float STATION_GROUND_HEIGHT_2 = 1.0f;
+GLBI_Convex_2D_Shape station_ground_2{3};
+static const float BENCH_WIDTH = CELL_SIZE / 2.0f - 0.5f;
+static const float BENCH_HEIGHT = 1.0f;
+static const float BENCH_LENGTH = 2.0f;
+GLBI_Convex_2D_Shape bench{3};
+static const float STRIP_WIDTH = CELL_SIZE - 0.5f;
+static const float STRIP_HEIGHT = 0.1f;
+static const float STRIP_LENGTH = 1.5f;
+GLBI_Convex_2D_Shape strip{3};
+
 GLBI_Engine myEngine;
-
-void initGround(const nlohmann::json &data)
-{
-    float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE;
-    ground.initShape({0.0f, 0.0f, 0.0f,
-                      sizeGrid, 0.0f, 0.0f,
-                      0.0f, sizeGrid, 0.0f,
-                      sizeGrid, sizeGrid, 0.0f});
-    ground.changeNature(GL_TRIANGLE_STRIP);
-}
-
-void initStraightRail()
-{
-    const unsigned int vertex_number = 8;
-    std::vector<float> vertex_coord = {
-        0.0f, 0.0f, 0.0f,      // v0
-        SR, 0.0f, 0.0f,        // v1
-        SR, CELL_SIZE, 0.0f,   // v2
-        0.0f, CELL_SIZE, 0.0f, // v3
-        0.0f, 0.0f, SR,        // v4
-        0.0f, CELL_SIZE, SR,   // v5
-        SR, CELL_SIZE, SR,     // v6
-        SR, 0.0f, SR           // v7
-    };
-
-    const unsigned int triangle_number = 12;
-    std::vector<unsigned int> triangle_index = {
-        0, 1, 2,
-        0, 2, 3,
-        0, 3, 5,
-        0, 4, 5,
-        2, 3, 6,
-        3, 5, 6,
-        0, 1, 7,
-        0, 4, 7,
-        1, 2, 7,
-        2, 6, 7,
-        4, 5, 7,
-        5, 6, 7};
-
-    straightRail = new IndexedMesh(triangle_number, vertex_number);
-    straightRail->addOneBuffer(0, 3, vertex_coord.data(), "Coord", true);
-    straightRail->addIndexBuffer(triangle_index.data(), true);
-    straightRail->createVAO();
-}
 
 void add_triangle(std::vector<float> &in_coord, Vector3D a, Vector3D b, Vector3D c)
 {
@@ -92,6 +62,51 @@ void add_triangle(std::vector<float> &in_coord, Vector3D a, Vector3D b, Vector3D
     in_coord.emplace_back(c.x);
     in_coord.emplace_back(c.y);
     in_coord.emplace_back(c.z);
+}
+
+void add_rectangle_triangles(std::vector<float> &in_coord, const Vector3D &origin, float width, float height, float length)
+{
+    /* Back face */
+    add_triangle(in_coord, {origin.x, origin.y, origin.z}, {origin.x + width, origin.y, origin.z}, {origin.x, origin.y, origin.z + height});
+    add_triangle(in_coord, {origin.x + width, origin.y, origin.z}, {origin.x + width, origin.y, origin.z + height}, {origin.x, origin.y, origin.z + height});
+
+    /* Front face */
+    add_triangle(in_coord, {origin.x, origin.y + length, origin.z}, {origin.x + width, origin.y + length, origin.z}, {origin.x, origin.y + length, origin.z + height});
+    add_triangle(in_coord, {origin.x + width, origin.y + length, origin.z}, {origin.x + width, origin.y + length, origin.z + height}, {origin.x, origin.y + length, origin.z + height});
+
+    /* Left face */
+    add_triangle(in_coord, {origin.x, origin.y, origin.z}, {origin.x, origin.y, origin.z + height}, {origin.x, origin.y + length, origin.z});
+    add_triangle(in_coord, {origin.x, origin.y + length, origin.z}, {origin.x, origin.y + length, origin.z + height}, {origin.x, origin.y, origin.z + height});
+
+    /* Right face */
+    add_triangle(in_coord, {origin.x + width, origin.y, origin.z}, {origin.x + width, origin.y, origin.z + height}, {origin.x + width, origin.y + length, origin.z});
+    add_triangle(in_coord, {origin.x + width, origin.y + length, origin.z}, {origin.x + width, origin.y + length, origin.z + height}, {origin.x + width, origin.y, origin.z + height});
+
+    /* Bottom face */
+    add_triangle(in_coord, {origin.x, origin.y, origin.z}, {origin.x + width, origin.y, origin.z}, {origin.x, origin.y + length, origin.z});
+    add_triangle(in_coord, {origin.x, origin.y + length, origin.z}, {origin.x + width, origin.y + length, origin.z}, {origin.x + width, origin.y, origin.z});
+
+    /* Top face */
+    add_triangle(in_coord, {origin.x, origin.y, origin.z + height}, {origin.x + width, origin.y, origin.z + height}, {origin.x, origin.y + length, origin.z + height});
+    add_triangle(in_coord, {origin.x, origin.y + length, origin.z + height}, {origin.x + width, origin.y + length, origin.z + height}, {origin.x + width, origin.y, origin.z + height});
+}
+
+void initGround(const nlohmann::json &data)
+{
+    float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE;
+    ground.initShape({0.0f, 0.0f, 0.0f,
+                      sizeGrid, 0.0f, 0.0f,
+                      0.0f, sizeGrid, 0.0f,
+                      sizeGrid, sizeGrid, 0.0f});
+    ground.changeNature(GL_TRIANGLE_STRIP);
+}
+
+void initStraightRail()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, 0.0f}, SR, SR, CELL_SIZE);
+    straightRail.initShape(in_coord);
+    straightRail.changeNature(GL_TRIANGLES);
 }
 
 void initInternalCurvedRail()
@@ -213,6 +228,40 @@ void initBallast()
     ballast->createVAO();
 }
 
+void initStationGround1()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, 0.0f}, CELL_SIZE, STATION_GROUND_HEIGHT_1, CELL_SIZE);
+    station_ground_1.initShape(in_coord);
+    station_ground_1.changeNature(GL_TRIANGLES);
+}
+
+void initStationGround2()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, 0.0f}, CELL_SIZE, STATION_GROUND_HEIGHT_2, CELL_SIZE);
+    station_ground_2.initShape(in_coord);
+    station_ground_2.changeNature(GL_TRIANGLES);
+}
+
+void initBench()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, 0.0f}, 0.25, BENCH_HEIGHT - 0.25, BENCH_LENGTH);               // Left foot
+    add_rectangle_triangles(in_coord, Vector3D{BENCH_WIDTH - 0.25, 0.0f, 0.0f}, 0.25, BENCH_HEIGHT - 0.25, BENCH_LENGTH); // Right foot
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, BENCH_HEIGHT - 0.25}, BENCH_WIDTH, 0.25, BENCH_LENGTH);        // Top plank
+    bench.initShape(in_coord);
+    bench.changeNature(GL_TRIANGLES);
+}
+
+void initStrip()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, 0.0f}, STRIP_WIDTH, STRIP_HEIGHT, STRIP_LENGTH);
+    strip.initShape(in_coord);
+    strip.changeNature(GL_TRIANGLES);
+}
+
 void initScene(const nlohmann::json &data)
 {
     initGround(data);
@@ -220,6 +269,10 @@ void initScene(const nlohmann::json &data)
     initBallast();
     initInternalCurvedRail();
     initExternalCurvedRail();
+    initStationGround1();
+    initStationGround2();
+    initBench();
+    initStrip();
 }
 
 void drawGround()
@@ -236,14 +289,14 @@ void drawStraightTrack()
     myEngine.mvMatrixStack.pushMatrix();
     myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL1 - (SR / 2.0f), 0.0f, RR * 2.0f});
     myEngine.updateMvMatrix();
-    straightRail->draw();
+    straightRail.drawShape();
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 
     myEngine.mvMatrixStack.pushMatrix();
     myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL2 - (SR / 2.0f), 0.0f, RR * 2.0f});
     myEngine.updateMvMatrix();
-    straightRail->draw();
+    straightRail.drawShape();
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 
@@ -345,6 +398,10 @@ void rotateCurvedTrack(const Vector2D &prev, const Vector2D &current, const Vect
         myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
         myEngine.updateMvMatrix();
     }
+    /*
+    |
+    +-
+    */
     else if ((prev.y == current.y + 1 || next.y == current.y + 1) && (prev.x == current.x + 1 || next.x == current.x + 1))
     {
         myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE, CELL_SIZE, 0.0f});
@@ -392,8 +449,86 @@ void drawTracks(const nlohmann::json &data)
     }
 }
 
+void rotateStation(const Vector2D &origin, const Vector2D &track)
+{
+    if (track.x == origin.x + 1)
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    else if (track.x == origin.x - 1)
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE, 0.0f, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, 1.0f});
+        myEngine.updateMvMatrix();
+    }
+    else if (track.y == origin.y - 1)
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+}
+
+void drawStation(const nlohmann::json &data)
+{
+
+    auto origin = Vector2D{data["origin"].get<std::vector<int>>()};
+    auto path = data["path"].get<std::vector<std::vector<int>>>();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE * origin.x, CELL_SIZE * origin.y, 0.0f});
+    myEngine.updateMvMatrix();
+
+    /* Turn the station towards the track */
+    auto it = std::find_if(path.begin(), path.end(), [&origin](const std::vector<int> &pos)
+                           { return origin.isNeighbor(pos); });
+    if (it != path.end())
+        rotateStation(origin, *it);
+
+    myEngine.setFlatColor(0.2f, 0.2f, 0.2f);
+    station_ground_1.drawShape();
+
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, 0.0f, STATION_GROUND_HEIGHT_1});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.25f, 0.25f, 0.25f);
+    station_ground_2.drawShape();
+
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, 0.0f, STATION_GROUND_HEIGHT_2});
+    myEngine.updateMvMatrix();
+
+    myEngine.setFlatColor(0.4f, 0.2f, 0.0f);
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.25f, 0.0f, 0.0f});
+    myEngine.updateMvMatrix();
+    bench.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE / 2.0f + 0.25f, 0.0f, 0.0f});
+    myEngine.updateMvMatrix();
+    bench.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.25f, CELL_SIZE - STRIP_LENGTH - 0.25f, 0.0f});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.6f, 0.5f, 0.0f);
+    strip.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+}
+
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
     drawTracks(data);
+    drawStation(data);
 }
