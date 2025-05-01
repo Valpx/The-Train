@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include "draw_scene.hpp"
+#include "vector2d.hpp"
 
 /* Camera settings */
 float angle_theta = -90.0f; // Angle between x axis and viewpoint
@@ -281,7 +282,7 @@ void drawCurvedTrack()
     myEngine.setFlatColor(0.4f, 0.2f, 0.0f);
 
     myEngine.mvMatrixStack.pushMatrix();
-    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(5.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(5.0f * M_PI / 12.0f), 0.0f});
+    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(5.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(5.0f * M_PI / 12.0f), RR});
     myEngine.mvMatrixStack.addRotation(M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.updateMvMatrix();
     ballast->draw();
@@ -289,7 +290,7 @@ void drawCurvedTrack()
     myEngine.updateMvMatrix();
 
     myEngine.mvMatrixStack.pushMatrix();
-    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(3.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(3.0f * M_PI / 12.0f), 0.0f});
+    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(3.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(3.0f * M_PI / 12.0f), RR});
     myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.updateMvMatrix();
     ballast->draw();
@@ -297,7 +298,7 @@ void drawCurvedTrack()
     myEngine.updateMvMatrix();
 
     myEngine.mvMatrixStack.pushMatrix();
-    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(M_PI / 12.0f), BALLAST_X_START * std::sin(M_PI / 12.0f), 0.0f});
+    myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(M_PI / 12.0f), BALLAST_X_START * std::sin(M_PI / 12.0f), RR});
     myEngine.mvMatrixStack.addRotation(5.0f * M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.updateMvMatrix();
     ballast->draw();
@@ -305,29 +306,94 @@ void drawCurvedTrack()
     myEngine.updateMvMatrix();
 }
 
+bool isCorner(const Vector2D &prev, const Vector2D &current, const Vector2D &next)
+{
+    auto A = current - prev;
+    auto B = next - current;
+    return (A.x * B.y - A.y * B.x) != 0;
+}
+
+void rotateStraightTrack(const Vector2D &current, const Vector2D &other)
+{
+    if (other.x != current.x)
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+}
+
+void rotateCurvedTrack(const Vector2D &prev, const Vector2D &current, const Vector2D &next)
+{
+    /*
+     |
+    -+
+    */
+    if ((prev.x == current.x - 1 || next.x == current.x - 1) && (prev.y == current.y + 1 || next.y == current.y + 1))
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    /*
+    +-
+    |
+    */
+    else if ((prev.y == current.y - 1 || next.y == current.y - 1) && (prev.x == current.x + 1 || next.x == current.x + 1))
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE, 0.0f, 0.0f});
+        myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    else if ((prev.y == current.y + 1 || next.y == current.y + 1) && (prev.x == current.x + 1 || next.x == current.x + 1))
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI, Vector3D{0.0f, 0.0f, 1.0f});
+        myEngine.updateMvMatrix();
+    }
+}
+
 void drawTracks(const nlohmann::json &data)
 {
     auto path = data["path"].get<std::vector<std::vector<int>>>();
     for (auto i = 0; i < path.size(); i++)
     {
+        auto current = Vector2D{path[i]};
+        myEngine.mvMatrixStack.pushMatrix();
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE * current.x, CELL_SIZE * current.y, 0.0f});
+        myEngine.updateMvMatrix();
+
         if (path.size() == 1)
-        {
-            // TO DO
-        }
+            drawStraightTrack();
         else if (path.size() == 2)
         {
-            // TO DO
+            auto other = Vector2D{path[i == 0 ? 1 : 0]};
+            rotateStraightTrack(current, other);
+            drawStraightTrack();
         }
         else
         {
-            auto prev = path[i == 0 ? path.size() - 1 : i - 1];
+            auto prev = Vector2D{path[i == 0 ? path.size() - 1 : i - 1]};
+            auto next = Vector2D{path[i == path.size() - 1 ? 0 : i + 1]};
+            if (current.isNeighbor(prev) && current.isNeighbor(next) && isCorner(prev, current, next))
+            {
+                rotateCurvedTrack(prev, current, next);
+                drawCurvedTrack();
+            }
+            else
+            {
+                rotateStraightTrack(current, current.isNeighbor(prev) ? prev : next);
+                drawStraightTrack();
+            }
         }
+
+        myEngine.mvMatrixStack.popMatrix();
+        myEngine.updateMvMatrix();
     }
 }
 
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
-    drawStraightTrack();
-    drawCurvedTrack();
+    drawTracks(data);
 }

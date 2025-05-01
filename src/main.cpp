@@ -6,7 +6,7 @@
 #include "glbasimac/glbi_texture.hpp"
 #include "nlohmann/json.hpp"
 #include "draw_scene.hpp"
-#include "vector.hpp"
+#include "vector2d.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -142,7 +142,7 @@ bool checkPath(const nlohmann::json &data)
         }
         set.insert(current);
 
-        if (i > 0 && manhattanDistance(current, prev) != 1)
+        if (i > 0 && current.manhattanDistance(prev) != 1)
         {
             std::cerr << "ERROR: The current rail must be adjacent to the previous rail" << std::endl;
             return false;
