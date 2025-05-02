@@ -49,6 +49,12 @@ static const float STRIP_LENGTH = 1.5f;
 GLBI_Convex_2D_Shape strip{3};
 
 /* Train */
+static const float TRAIN_X_START = 2.0f;
+static const float TRAIN_X_END = 8.0f;
+GLBI_Convex_2D_Shape train{3};
+static const float TRAIN_WHEEL_RADIUS = 1.0f;
+IndexedMesh *train_wheel = NULL;
+StandardMesh *train_wheel_side = NULL;
 
 GLBI_Engine myEngine;
 
@@ -93,6 +99,8 @@ void add_rectangle_triangles(std::vector<float> &in_coord, const Vector3D &origi
     add_triangle(in_coord, {origin.x, origin.y, origin.z + height}, {origin.x + width, origin.y, origin.z + height}, {origin.x, origin.y + length, origin.z + height});
     add_triangle(in_coord, {origin.x, origin.y + length, origin.z + height}, {origin.x + width, origin.y + length, origin.z + height}, {origin.x + width, origin.y, origin.z + height});
 }
+
+/* ---INITIALIZATION--- */
 
 void initGround(const nlohmann::json &data)
 {
@@ -272,25 +280,58 @@ void initStrip()
     strip.changeNature(GL_TRIANGLES);
 }
 
+void initTrain()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{0.0f, 0.0f, 0.0f}, TRAIN_X_END - TRAIN_X_START, 4.0f, CELL_SIZE);
+    add_rectangle_triangles(in_coord, Vector3D{((TRAIN_X_END - TRAIN_X_START) - (TRAIN_X_END - TRAIN_X_START - 2.0f)) / 2.0f, 0.0f, 4.0f}, TRAIN_X_END - TRAIN_X_START - 2.0f, 2.0f, 2.0f * CELL_SIZE / 3.0f);
+    train.initShape(in_coord);
+    train.changeNature(GL_TRIANGLES);
+}
+
+void initTrainWheel()
+{
+    train_wheel = basicCylinder(SR, TRAIN_WHEEL_RADIUS);
+    train_wheel->createVAO();
+}
+
+void initTrainWheelSide()
+{
+    train_wheel_side = basicCone(0.0f, TRAIN_WHEEL_RADIUS);
+    train_wheel_side->createVAO();
+}
+
 void initScene(const nlohmann::json &data)
 {
     initGround(data);
+
     initStraightRail();
-    initBallast();
-    initBallastSide();
+
     initInternalCurvedRail();
     initExternalCurvedRail();
+
+    initBallast();
+    initBallastSide();
+
     initStationGround1();
     initStationGround2();
     initBench();
     initStrip();
+
+    initTrain();
+    initTrainWheel();
+    initTrainWheelSide();
 }
+
+/* ---GROUND--- */
 
 void drawGround()
 {
     myEngine.setFlatColor(0.2f, 0.0f, 0.0f);
     ground.drawShape();
 }
+
+/* ---TRACKS--- */
 
 void drawStraightTrack()
 {
@@ -469,6 +510,8 @@ void drawTracks(const nlohmann::json &data)
     }
 }
 
+/* ---STATION--- */
+
 void rotateStation(const Vector2D &origin, const Vector2D &track)
 {
     if (track.x == origin.x + 1)
@@ -493,7 +536,6 @@ void rotateStation(const Vector2D &origin, const Vector2D &track)
 
 void drawStation(const nlohmann::json &data)
 {
-
     auto origin = Vector2D{data["origin"].get<std::vector<int>>()};
     auto path = data["path"].get<std::vector<std::vector<int>>>();
 
@@ -546,10 +588,84 @@ void drawStation(const nlohmann::json &data)
     myEngine.updateMvMatrix();
 }
 
+/* ---TRAIN--- */
+
+void drawTrainWheel()
+{
+    myEngine.setFlatColor(0.6f, 0.0f, 0.0f);
+
+    train_wheel_side->draw();
+    train_wheel->draw();
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, SR, 0.0f});
+    myEngine.updateMvMatrix();
+    train_wheel_side->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+}
+
+void drawTrain(const nlohmann::json &data)
+{
+    auto path = data["path"].get<std::vector<std::vector<int>>>();
+    if (path.size() == 0)
+        return;
+    auto position = Vector2D{path[0]};
+
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE * position.x, CELL_SIZE * position.y, RR * 2.0f + SR});
+    myEngine.updateMvMatrix();
+
+    /* Bottom left wheel */
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL1 - SR / 2.0f, TRAIN_WHEEL_RADIUS, TRAIN_WHEEL_RADIUS});
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    drawTrainWheel();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Bottom right wheel */
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL2 - SR / 2.0f, TRAIN_WHEEL_RADIUS, TRAIN_WHEEL_RADIUS});
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    drawTrainWheel();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Top left wheel */
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL1 - SR / 2.0f, CELL_SIZE - TRAIN_WHEEL_RADIUS, TRAIN_WHEEL_RADIUS});
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    drawTrainWheel();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Top right wheel */
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{POS_X_RAIL2 - SR / 2.0f, CELL_SIZE - TRAIN_WHEEL_RADIUS, TRAIN_WHEEL_RADIUS});
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+    myEngine.updateMvMatrix();
+    drawTrainWheel();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Train */
+    myEngine.mvMatrixStack.addTranslation(Vector3D{TRAIN_X_START, 0.0f, TRAIN_WHEEL_RADIUS * 2.0f});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.1f, 0.1f, 0.1f);
+    train.drawShape();
+
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+}
+
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
     drawTracks(data);
     // drawStation(data);
-    myEngine.setFlatColor(0.6f, 0.5f, 0.0f);
+    drawTrain(data);
 }
