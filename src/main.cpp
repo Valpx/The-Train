@@ -24,7 +24,15 @@ static float aspectRatio = 1.0f;
 /* Minimal time wanted between two images */
 static const double FRAMERATE_IN_SECONDS = 1.0 / 30.0;
 
-bool key_down = false;
+static const float MOUSE_SENSITIVITY = 0.1f;
+float yaw = 135.0f;
+float pitch = 25.0f;
+double lastX = 0.0f, lastY = 0.0f;
+
+static const float CAMERA_SPEED = 2.0f;
+Vector3D camera_pos(-10.0f, -10.0f, 25.0f);
+Vector3D camera_front;
+Vector3D camera_up = Vector3D(0.0f, 0.0f, 1.0f);
 
 void onError(int error, const char *description)
 {
@@ -42,34 +50,34 @@ void onWindowResized(GLFWwindow * /*window*/, int width, int height)
 
 void onKey(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/)
 {
-    if (action == GLFW_RELEASE)
-        key_down = false;
-
-    if (action == GLFW_PRESS || key_down)
+    if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
-        key_down = true;
         switch (key)
         {
-        case GLFW_KEY_A:
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
-            break;
-        case GLFW_KEY_UP:
-            angle_phy += 4.0f;
-            break;
-        case GLFW_KEY_DOWN:
-            angle_phy -= 4.0f;
-            break;
-        case GLFW_KEY_LEFT:
-            angle_theta += 4.0f;
-            break;
-        case GLFW_KEY_RIGHT:
-            angle_theta -= 4.0f;
-            break;
-        case GLFW_KEY_Q:
-            dist_zoom *= 1.1f;
-            break;
+        /* Avancer */
         case GLFW_KEY_W:
-            dist_zoom *= 0.9f;
+            camera_pos += camera_front * CAMERA_SPEED;
+            break;
+        /* Reculer */
+        case GLFW_KEY_S:
+            camera_pos -= camera_front * CAMERA_SPEED;
+            break;
+        /* Gauche */
+        case GLFW_KEY_A:
+            camera_front = camera_front ^ camera_up;
+            camera_front.normalize();
+            camera_pos -= camera_front * CAMERA_SPEED;
+            break;
+        /* Droite */
+        case GLFW_KEY_D:
+            camera_front = camera_front ^ camera_up;
+            camera_front.normalize();
+            camera_pos += camera_front * CAMERA_SPEED;
+            break;
+
+        /* Quitter */
+        case GLFW_KEY_ESCAPE:
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
             break;
         }
     }
@@ -157,6 +165,28 @@ bool checkData(const nlohmann::json &data)
     return checkDataFormat(data) && checkGridSize(data) && checkPath(data);
 }
 
+void updateYawPitch(GLFWwindow *window)
+{
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+
+    float xoffset = lastX - xpos;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    xoffset *= MOUSE_SENSITIVITY;
+    yoffset *= MOUSE_SENSITIVITY;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -196,6 +226,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* Hide the cursor */
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
 
@@ -228,14 +261,14 @@ int main(int argc, char **argv)
 
         /* Fix camera position */
         myEngine.mvMatrixStack.loadIdentity();
-        Vector3D pos_camera =
-            Vector3D(dist_zoom * cos(deg2rad(angle_theta)) * cos(deg2rad(angle_phy)),
-                     dist_zoom * sin(deg2rad(angle_theta)) * cos(deg2rad(angle_phy)),
-                     dist_zoom * sin(deg2rad(angle_phy)));
-        Vector3D viewed_point = Vector3D(0.0, 0.0, 0.0);
-        Vector3D up_vector = Vector3D(0.0, 0.0, 1.0);
-        Matrix4D viewMatrix = Matrix4D::lookAt(pos_camera, viewed_point, up_vector);
-        myEngine.setViewMatrix(viewMatrix);
+        updateYawPitch(window);
+        camera_front = Vector3D(
+            cos(deg2rad(yaw)) * cos(deg2rad(pitch)),
+            sin(deg2rad(yaw)) * cos(deg2rad(pitch)),
+            sin(deg2rad(pitch)));
+        camera_front.normalize();
+        Matrix4D view_matrix = Matrix4D::lookAt(camera_pos, camera_pos + camera_front, camera_up);
+        myEngine.setViewMatrix(view_matrix);
         myEngine.updateMvMatrix();
 
         renderScene(data);

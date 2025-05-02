@@ -4,11 +4,6 @@
 #include "draw_scene.hpp"
 #include "vector2d.hpp"
 
-/* Camera settings */
-float angle_theta = -90.0f; // Angle between x axis and viewpoint
-float angle_phy = 30.0f;    // Angle between z axis and viewpoint
-float dist_zoom = 25.0f;    // Distance between origin and viewpoint
-
 /* Ground */
 static const float CELL_SIZE = 10.0f;
 GLBI_Convex_2D_Shape ground{3};
@@ -55,6 +50,10 @@ GLBI_Convex_2D_Shape train{3};
 static const float TRAIN_WHEEL_RADIUS = 1.0f;
 IndexedMesh *train_wheel = NULL;
 StandardMesh *train_wheel_side = NULL;
+static const float TRAIN_CHIMNEY_HEIGHT = 2.5f;
+static const float TRAIN_CHIMNEY_RADIUS = 0.5f;
+IndexedMesh *train_chimney = NULL;
+StandardMesh *train_chimney_hat = NULL;
 
 GLBI_Engine myEngine;
 
@@ -301,26 +300,44 @@ void initTrainWheelSide()
     train_wheel_side->createVAO();
 }
 
+void initTrainChimney()
+{
+    train_chimney = basicCylinder(TRAIN_CHIMNEY_HEIGHT, TRAIN_CHIMNEY_RADIUS);
+    train_chimney->createVAO();
+}
+
+void initTrainChimneyHat()
+{
+    train_chimney_hat = basicCone(1.0f, TRAIN_CHIMNEY_RADIUS * 2.0f);
+    train_chimney_hat->createVAO();
+}
+
 void initScene(const nlohmann::json &data)
 {
+    /* Ground */
     initGround(data);
 
+    /* Rails */
     initStraightRail();
-
     initInternalCurvedRail();
     initExternalCurvedRail();
 
+    /* Ballast */
     initBallast();
     initBallastSide();
 
+    /* Station */
     initStationGround1();
     initStationGround2();
     initBench();
     initStrip();
 
+    /* Train */
     initTrain();
     initTrainWheel();
     initTrainWheelSide();
+    initTrainChimney();
+    initTrainChimneyHat();
 }
 
 /* ---GROUND--- */
@@ -653,10 +670,33 @@ void drawTrain(const nlohmann::json &data)
     myEngine.updateMvMatrix();
 
     /* Train */
+    myEngine.mvMatrixStack.pushMatrix();
     myEngine.mvMatrixStack.addTranslation(Vector3D{TRAIN_X_START, 0.0f, TRAIN_WHEEL_RADIUS * 2.0f});
     myEngine.updateMvMatrix();
     myEngine.setFlatColor(0.1f, 0.1f, 0.1f);
     train.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Train chimney */
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE / 2.0f, TRAIN_CHIMNEY_RADIUS + 4.0f, 4.0f + TRAIN_X_END - TRAIN_X_START - 2.0f});
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{1.0f, 0.0f, 0.0f});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.2f, 0.2f, 0.2f);
+    train_chimney->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    /* Train chimney hat */
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE / 2.0f, TRAIN_CHIMNEY_RADIUS + 4.0f, 4.0f + TRAIN_X_END - TRAIN_X_START - 2.0f + TRAIN_CHIMNEY_HEIGHT});
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{1.0f, 0.0f, 0.0f});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.1f, 0.1f, 0.1f);
+    train_chimney_hat->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
 
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
