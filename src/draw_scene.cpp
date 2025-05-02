@@ -661,6 +661,81 @@ void drawTrainWheel()
     myEngine.updateMvMatrix();
 }
 
+void rotateTrainOnStraightTrack(const Vector2D &current, const Vector2D &next)
+{
+    if (next.x == current.x + 1)
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    else if (next.x == current.x - 1)
+    {
+        myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{0.0f, 0.0f, 1.0f});
+        myEngine.updateMvMatrix();
+    }
+}
+
+void rotateTrainOnCurvedTrack(const Vector2D &prev, const Vector2D &current, const Vector2D &next)
+{
+    /*
+     |
+    -+
+    */
+    if ((prev.x == current.x - 1 || next.x == current.x - 1) && (prev.y == current.y + 1 || next.y == current.y + 1))
+    {
+        float angle = M_PI / 4.0f;
+        myEngine.mvMatrixStack.addTranslation(Vector3D{-CELL_SIZE / 2.0f, CELL_SIZE / 2.0f, 0.0f});
+        myEngine.mvMatrixStack.addRotation(angle, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    /*
+    +-
+    |
+    */
+    else if ((prev.y == current.y - 1 || next.y == current.y - 1) && (prev.x == current.x + 1 || next.x == current.x + 1))
+    {
+        float angle = M_PI / 4.0f;
+        myEngine.mvMatrixStack.addRotation(angle, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    /*
+    |
+    +-
+    */
+    else if ((prev.y == current.y + 1 || next.y == current.y + 1) && (prev.x == current.x + 1 || next.x == current.x + 1))
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE / 2.0f, CELL_SIZE + CELL_SIZE / 2.0f, 0.0f});
+        myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 4.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+    /*
+    -+
+     |
+    */
+    else
+    {
+        myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE / 2.0f, CELL_SIZE, 0.0f});
+        myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 4.0f, Vector3D{0.0f, 0.0f, -1.0f});
+        myEngine.updateMvMatrix();
+    }
+}
+
+void rotateTrain(const std::vector<std::vector<int>> &path, const Vector2D &current)
+{
+    if (path.size() == 2)
+        rotateTrainOnStraightTrack(current, Vector2D{path[1]});
+    else if (path.size() > 2)
+    {
+        auto prev = Vector2D{path[path.size() - 1]};
+        auto next = Vector2D{path[1]};
+        if (current.isNeighbor(prev) && current.isNeighbor(next) && isCorner(prev, current, next))
+            rotateTrainOnCurvedTrack(prev, current, next);
+        else
+            rotateTrainOnStraightTrack(current, next);
+    }
+}
+
 void drawTrain(const nlohmann::json &data)
 {
     auto path = data["path"].get<std::vector<std::vector<int>>>();
@@ -671,6 +746,8 @@ void drawTrain(const nlohmann::json &data)
     myEngine.mvMatrixStack.pushMatrix();
     myEngine.mvMatrixStack.addTranslation(Vector3D{CELL_SIZE * position.x, CELL_SIZE * position.y, RR * 2.0f + SR});
     myEngine.updateMvMatrix();
+
+    rotateTrain(path, position);
 
     /* Bottom left wheel */
     myEngine.mvMatrixStack.pushMatrix();
@@ -745,6 +822,6 @@ void renderScene(const nlohmann::json &data)
 {
     drawGround();
     drawTracks(data);
-    // drawStation(data);
+    drawStation(data);
     drawTrain(data);
 }
