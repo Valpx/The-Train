@@ -24,10 +24,11 @@ static float aspectRatio = 1.0f;
 /* Minimal time wanted between two images */
 static const double FRAMERATE_IN_SECONDS = 1.0 / 30.0;
 
+/* Camera settings */
 static const float MOUSE_SENSITIVITY = 0.1f;
-float yaw = 135.0f;
-float pitch = 25.0f;
-double lastX = 0.0f, lastY = 0.0f;
+float yaw = 135.0f;                /* Horizontal */
+float pitch = 25.0f;               /* Vertical */
+double lastX = 0.0f, lastY = 0.0f; /* Last mouse position */
 
 static const float CAMERA_SPEED = 2.0f;
 Vector3D camera_pos(-10.0f, -10.0f, 25.0f);
@@ -183,8 +184,13 @@ void updateYawPitch(GLFWwindow *window)
 
     if (pitch > 89.0f)
         pitch = 89.0f;
-    if (pitch < -89.0f)
+    else if (pitch < -89.0f)
         pitch = -89.0f;
+}
+
+void loadGrass()
+{
+    // TO DO
 }
 
 int main(int argc, char **argv)
@@ -199,7 +205,7 @@ int main(int argc, char **argv)
     std::ifstream file(argv[1]);
     if (!file)
     {
-        std::cerr << "ERROR: Cannot open the file" << std::endl;
+        std::cerr << "ERROR: Cannot open " << argv[1] << std::endl;
         return 1;
     }
 
@@ -247,6 +253,8 @@ int main(int argc, char **argv)
     CHECK_GL;
 
     initScene(data);
+    if (!initGrassTexture())
+        return 1;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -285,6 +293,8 @@ int main(int argc, char **argv)
         if (elapsedTime < FRAMERATE_IN_SECONDS)
             glfwWaitEventsTimeout(FRAMERATE_IN_SECONDS - elapsedTime);
     }
+
+    freeGrassTexture();
 
     glfwTerminate();
 

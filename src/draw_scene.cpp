@@ -3,10 +3,13 @@
 #include <functional>
 #include "draw_scene.hpp"
 #include "vector2d.hpp"
+#include "glbasimac/glbi_texture.hpp"
+#define STB_IMAGE_IMPLEMENTATION
+#include "tools/stb_image.h"
 
 /* Ground */
 static const float CELL_SIZE = 10.0f;
-GLBI_Convex_2D_Shape ground{3};
+StandardMesh *ground = NULL;
 
 /* Rail settings */
 static const float SR = 0.5f;
@@ -54,6 +57,9 @@ static const float TRAIN_CHIMNEY_HEIGHT = 2.5f;
 static const float TRAIN_CHIMNEY_RADIUS = 0.5f;
 IndexedMesh *train_chimney = NULL;
 StandardMesh *train_chimney_hat = NULL;
+
+stbi_uc *img;
+GLBI_Texture grass_texture;
 
 GLBI_Engine myEngine;
 
@@ -104,11 +110,8 @@ void add_rectangle_triangles(std::vector<float> &in_coord, const Vector3D &origi
 void initGround(const nlohmann::json &data)
 {
     float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE;
-    ground.initShape({0.0f, 0.0f, 0.0f,
-                      sizeGrid, 0.0f, 0.0f,
-                      0.0f, sizeGrid, 0.0f,
-                      sizeGrid, sizeGrid, 0.0f});
-    ground.changeNature(GL_TRIANGLE_STRIP);
+    ground = basicRect(sizeGrid, sizeGrid);
+    ground->createVAO();
 }
 
 void initStraightRail()
@@ -340,12 +343,44 @@ void initScene(const nlohmann::json &data)
     initTrainChimneyHat();
 }
 
+bool initGrassTexture()
+{
+    int x, y, comp;
+    img = stbi_load("../assets/textures/grass.jpg", &x, &y, &comp, 0);
+    if (img == NULL)
+    {
+        std::cerr << "ERROR: Can't load ../assets/textures/grass.jpg" << std::endl;
+        return false;
+    }
+    grass_texture.createTexture();
+    grass_texture.attachTexture();
+    grass_texture.setParameters(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    grass_texture.loadImage(x, y, comp, img);
+    grass_texture.detachTexture();
+    return true;
+}
+
+void freeGrassTexture()
+{
+    stbi_image_free(img);
+}
+
 /* ---GROUND--- */
 
 void drawGround()
 {
-    myEngine.setFlatColor(0.2f, 0.0f, 0.0f);
-    ground.drawShape();
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addRotation(M_PI / 2.0f, Vector3D{-1.0f, 0.0f, 0.0f});
+    myEngine.updateMvMatrix();
+
+    myEngine.activateTexturing(true);
+    grass_texture.attachTexture();
+    ground->draw();
+    grass_texture.detachTexture();
+    myEngine.activateTexturing(false);
+
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
 }
 
 /* ---TRACKS--- */

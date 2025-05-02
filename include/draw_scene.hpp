@@ -17,4 +17,8 @@ extern GLBI_Engine myEngine;
 
 void initScene(const nlohmann::json &);
 
+bool initGrassTexture();
+
+void freeGrassTexture();
+
 void renderScene(const nlohmann::json &);
