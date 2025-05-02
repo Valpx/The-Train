@@ -26,7 +26,7 @@ static const double FRAMERATE_IN_SECONDS = 1.0 / 30.0;
 
 /* Camera settings */
 static const float MOUSE_SENSITIVITY = 0.1f;
-float yaw = 135.0f;                /* Horizontal */
+float yaw = 90.0f;                 /* Horizontal */
 float pitch = 25.0f;               /* Vertical */
 double lastX = 0.0f, lastY = 0.0f; /* Last mouse position */
 
@@ -188,11 +188,6 @@ void updateYawPitch(GLFWwindow *window)
         pitch = -89.0f;
 }
 
-void loadGrass()
-{
-    // TO DO
-}
-
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -241,7 +236,10 @@ int main(int argc, char **argv)
     std::cout << "Loading GL extension" << std::endl;
     // Intialize glad (loads the OpenGL functions)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        glfwTerminate();
         return 1;
+    }
 
     glfwSetWindowSizeCallback(window, onWindowResized);
     glfwSetKeyCallback(window, onKey);
@@ -254,7 +252,10 @@ int main(int argc, char **argv)
 
     initScene(data);
     if (!initGrassTexture())
+    {
+        glfwTerminate();
         return 1;
+    }
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))

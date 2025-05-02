@@ -385,6 +385,19 @@ void drawGround()
 
 /* ---TRACKS--- */
 
+void drawBallast()
+{
+    ballast_side->draw();
+    ballast->draw();
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.updateMvMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, BALLAST_X_END - BALLAST_X_START, 0.0f});
+    myEngine.updateMvMatrix();
+    ballast_side->draw();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+}
+
 void drawStraightTrack()
 {
     /* Rails */
@@ -416,16 +429,7 @@ void drawStraightTrack()
     {
         myEngine.mvMatrixStack.addTranslation(Vector3D{-(SX + RR) * (i == 0 ? 1.0f : 2.0f), 0.0f, 0.0f});
         myEngine.updateMvMatrix();
-        ballast->draw();
-
-        ballast_side->draw();
-
-        myEngine.mvMatrixStack.pushMatrix();
-        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, BALLAST_X_END - BALLAST_X_START, 0.0f});
-        myEngine.updateMvMatrix();
-        ballast_side->draw();
-        myEngine.mvMatrixStack.popMatrix();
-        myEngine.updateMvMatrix();
+        drawBallast();
     }
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
@@ -451,7 +455,7 @@ void drawCurvedTrack()
     myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(5.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(5.0f * M_PI / 12.0f), RR});
     myEngine.mvMatrixStack.addRotation(M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.updateMvMatrix();
-    ballast->draw();
+    drawBallast();
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 
@@ -459,7 +463,7 @@ void drawCurvedTrack()
     myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(3.0f * M_PI / 12.0f), BALLAST_X_START * std::sin(3.0f * M_PI / 12.0f), RR});
     myEngine.mvMatrixStack.addRotation(3.0f * M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.updateMvMatrix();
-    ballast->draw();
+    drawBallast();
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 
@@ -467,7 +471,7 @@ void drawCurvedTrack()
     myEngine.mvMatrixStack.addTranslation(Vector3D{BALLAST_X_START * std::cos(M_PI / 12.0f), BALLAST_X_START * std::sin(M_PI / 12.0f), RR});
     myEngine.mvMatrixStack.addRotation(5.0f * M_PI / 12.0f, Vector3D{0.0f, 0.0f, -1.0f});
     myEngine.updateMvMatrix();
-    ballast->draw();
+    drawBallast();
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 }
