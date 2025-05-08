@@ -150,7 +150,7 @@ void init_set_positions(const nlohmann::json &data)
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(2, 5);
+    std::uniform_int_distribution<int> dist(1, 6);
     std::shuffle(set_pos.begin(), set_pos.end(), gen);
 
     int tree_count = dist(gen);
@@ -957,10 +957,43 @@ void draw_building()
     myEngine.updateMvMatrix();
 }
 
+void draw_trees()
+{
+    for (auto pos : tree_pos)
+    {
+        myEngine.mvMatrixStack.pushMatrix();
+        myEngine.mvMatrixStack.addTranslation(Vector3D{pos.first * CELL_SIZE, pos.second * CELL_SIZE, 0.0f});
+        myEngine.updateMvMatrix();
+        draw_tree();
+        myEngine.mvMatrixStack.popMatrix();
+        myEngine.updateMvMatrix();
+    }
+}
+
+void draw_buildings()
+{
+    for (auto pos : building_pos)
+    {
+        myEngine.mvMatrixStack.pushMatrix();
+        myEngine.mvMatrixStack.addTranslation(Vector3D{pos.first * CELL_SIZE, pos.second * CELL_SIZE, 0.0f});
+        myEngine.updateMvMatrix();
+        draw_building();
+        myEngine.mvMatrixStack.popMatrix();
+        myEngine.updateMvMatrix();
+    }
+}
+
+void draw_sets()
+{
+    draw_trees();
+    draw_buildings();
+}
+
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
     drawTracks(data);
     drawStation(data);
     drawTrain(data);
+    draw_sets();
 }
