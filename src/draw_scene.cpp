@@ -58,6 +58,14 @@ static const float TRAIN_CHIMNEY_RADIUS = 0.5f;
 IndexedMesh *train_chimney = NULL;
 StandardMesh *train_chimney_hat = NULL;
 
+/* Tree */
+static const float TRUNK_WIDTH = 2.0f;
+static const float TRUNK_HEIGHT = 10.0f;
+GLBI_Convex_2D_Shape trunk{3};
+static const float LEAF_WIDTH = 7.0f;
+static const float LEAF_HEIGHT = 9.0f;
+GLBI_Convex_2D_Shape leaf{3};
+
 stbi_uc *img;
 GLBI_Texture grass_texture;
 
@@ -315,6 +323,22 @@ void initTrainChimneyHat()
     train_chimney_hat->createVAO();
 }
 
+void initTrunk()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{CELL_SIZE / 2.0f - TRUNK_WIDTH / 2.0f, CELL_SIZE / 2.0f - TRUNK_WIDTH / 2.0f, 0.0f}, TRUNK_WIDTH, TRUNK_HEIGHT, TRUNK_WIDTH);
+    trunk.initShape(in_coord);
+    trunk.changeNature(GL_TRIANGLES);
+}
+
+void initLeaf()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{CELL_SIZE / 2.0f - LEAF_WIDTH / 2.0f, CELL_SIZE / 2.0f - LEAF_WIDTH / 2.0f, TRUNK_HEIGHT}, LEAF_WIDTH, LEAF_HEIGHT, LEAF_WIDTH);
+    leaf.initShape(in_coord);
+    leaf.changeNature(GL_TRIANGLES);
+}
+
 void initScene(const nlohmann::json &data)
 {
     /* Ground */
@@ -341,6 +365,10 @@ void initScene(const nlohmann::json &data)
     initTrainWheelSide();
     initTrainChimney();
     initTrainChimneyHat();
+
+    /* Tree */
+    initTrunk();
+    initLeaf();
 }
 
 bool initGrassTexture()
@@ -816,6 +844,14 @@ void drawTrain(const nlohmann::json &data)
 
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
+}
+
+void draw_tree()
+{
+    myEngine.setFlatColor(0.3f, 0.15f, 0.15f);
+    trunk.drawShape();
+    myEngine.setFlatColor(0.0f, 0.4f, 0.0f);
+    leaf.drawShape();
 }
 
 void renderScene(const nlohmann::json &data)
