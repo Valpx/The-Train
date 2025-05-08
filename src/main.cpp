@@ -31,9 +31,6 @@ float pitch = 25.0f;               /* Vertical */
 double lastX = 0.0f, lastY = 0.0f; /* Last mouse position */
 
 static const float CAMERA_SPEED = 2.0f;
-Vector3D camera_pos(-10.0f, -10.0f, 25.0f);
-Vector3D camera_front;
-Vector3D camera_up = Vector3D(0.0f, 0.0f, 1.0f);
 
 void onError(int error, const char *description)
 {

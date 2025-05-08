@@ -11,6 +11,9 @@ using namespace glbasimac;
 /* Camera parameters and functions */
 static const float Z_NEAR = 0.1f;
 static const float Z_FAR = 500.0f;
+extern Vector3D camera_pos;
+extern Vector3D camera_front;
+extern Vector3D camera_up;
 
 /* OpenGL Engine */
 extern GLBI_Engine myEngine;

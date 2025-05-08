@@ -7,6 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "tools/stb_image.h"
 
+/* Camera */
+Vector3D camera_pos;
+Vector3D camera_front;
+Vector3D camera_up{0.0f, 0.0f, 1.0f};
+
 /* Ground */
 static const float CELL_SIZE = 10.0f;
 StandardMesh *ground = NULL;
@@ -66,6 +71,14 @@ static const float LEAF_WIDTH = 7.0f;
 static const float LEAF_HEIGHT = 9.0f;
 GLBI_Convex_2D_Shape leaf{3};
 
+/* Building */
+static const int BUILDING_SIZE = 10;
+static const float BUILDING_HEIGHT = 1.5f;
+static const float BLACK_BUILDING_WIDTH = 6.0f;
+GLBI_Convex_2D_Shape black_building{3};
+static const float GRAY_BUILDING_WIDTH = 10.0f;
+GLBI_Convex_2D_Shape gray_building{3};
+
 stbi_uc *img;
 GLBI_Texture grass_texture;
 
@@ -114,6 +127,12 @@ void add_rectangle_triangles(std::vector<float> &in_coord, const Vector3D &origi
 }
 
 /* ---INITIALIZATION--- */
+
+void initCamera(const nlohmann::json &data)
+{
+    float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE;
+    camera_pos = Vector3D{sizeGrid / 2.0f, sizeGrid / 2.0f, 25.0f};
+}
 
 void initGround(const nlohmann::json &data)
 {
@@ -339,8 +358,27 @@ void initLeaf()
     leaf.changeNature(GL_TRIANGLES);
 }
 
+void initBlackBuilding()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{CELL_SIZE / 2.0f - BLACK_BUILDING_WIDTH / 2.0f, CELL_SIZE / 2.0f - BLACK_BUILDING_WIDTH / 2.0f, 0.0f}, BLACK_BUILDING_WIDTH, BUILDING_HEIGHT, BLACK_BUILDING_WIDTH);
+    black_building.initShape(in_coord);
+    black_building.changeNature(GL_TRIANGLES);
+}
+
+void initGrayBuilding()
+{
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{CELL_SIZE / 2.0f - GRAY_BUILDING_WIDTH / 2.0f, CELL_SIZE / 2.0f - GRAY_BUILDING_WIDTH / 2.0f, 0.0f}, GRAY_BUILDING_WIDTH, BUILDING_HEIGHT, GRAY_BUILDING_WIDTH);
+    gray_building.initShape(in_coord);
+    gray_building.changeNature(GL_TRIANGLES);
+}
+
 void initScene(const nlohmann::json &data)
 {
+    /* Camera */
+    initCamera(data);
+
     /* Ground */
     initGround(data);
 
@@ -369,6 +407,10 @@ void initScene(const nlohmann::json &data)
     /* Tree */
     initTrunk();
     initLeaf();
+
+    /* Building */
+    initBlackBuilding();
+    initGrayBuilding();
 }
 
 bool initGrassTexture()
@@ -854,10 +896,30 @@ void draw_tree()
     leaf.drawShape();
 }
 
+void draw_building()
+{
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.updateMvMatrix();
+    for (auto i = 0; i < BUILDING_SIZE; i++)
+    {
+        myEngine.setFlatColor(0.1f, 0.1f, 0.1f);
+        black_building.drawShape();
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, 0.0f, BUILDING_HEIGHT});
+        myEngine.updateMvMatrix();
+        myEngine.setFlatColor(0.4f, 0.4f, 0.4f);
+        gray_building.drawShape();
+        myEngine.mvMatrixStack.addTranslation(Vector3D{0.0f, 0.0f, BUILDING_HEIGHT});
+        myEngine.updateMvMatrix();
+    }
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+}
+
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
-    drawTracks(data);
-    drawStation(data);
-    drawTrain(data);
+    // drawTracks(data);
+    // drawStation(data);
+    // drawTrain(data);
+    draw_building();
 }
