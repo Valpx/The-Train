@@ -85,7 +85,7 @@ GLBI_Convex_2D_Shape leaf{3};
 std::vector<std::pair<int, int>> tree_pos{};
 
 /* Building */
-static const int BUILDING_SIZE = 10;
+static const int BUILDING_SIZE = 7;
 static const float BUILDING_HEIGHT = 1.5f;
 static const float BLACK_BUILDING_WIDTH = 6.0f;
 GLBI_Convex_2D_Shape black_building{3};
@@ -93,10 +93,39 @@ static const float GRAY_BUILDING_WIDTH = 10.0f;
 GLBI_Convex_2D_Shape gray_building{3};
 std::vector<std::pair<int, int>> building_pos{};
 
+/* Clouds */
+Vector3D cloud_1_pos{};
+float cloud_1_anim = 0.0f;
+float cloud_1_speed;
+float cloud_1_max_y_pos;
+GLBI_Convex_2D_Shape cloud_1{3};
+
+Vector3D cloud_2_pos{};
+float cloud_2_anim = 0.0f;
+float cloud_2_speed;
+float cloud_2_max_y_pos;
+GLBI_Convex_2D_Shape cloud_2{3};
+
 stbi_uc *img;
 GLBI_Texture grass_texture;
 
 GLBI_Engine myEngine;
+
+float randomFloat(float min, float max)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(gen);
+}
+
+int randomInt(int min, int max)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(min, max);
+    return dist(gen);
+}
 
 void add_triangle(std::vector<float> &in_coord, Vector3D a, Vector3D b, Vector3D c)
 {
@@ -159,17 +188,16 @@ void init_set_positions(const nlohmann::json &data)
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(1, 6);
     std::shuffle(set_pos.begin(), set_pos.end(), gen);
 
-    int tree_count = dist(gen);
+    int tree_count = randomInt(2, 7);
     for (int i = 0; i < tree_count && !set_pos.empty(); i++)
     {
         tree_pos.push_back(set_pos.back());
         set_pos.pop_back();
     }
 
-    int building_count = dist(gen);
+    int building_count = randomInt(1, 3);
     for (int i = 0; i < building_count && !set_pos.empty(); i++)
     {
         building_pos.push_back(set_pos.back());
@@ -180,7 +208,7 @@ void init_set_positions(const nlohmann::json &data)
 void initCamera(const nlohmann::json &data)
 {
     float sizeGrid = data["size_grid"].get<int>() * CELL_SIZE;
-    camera_pos = Vector3D{sizeGrid / 2.0f, sizeGrid / 2.0f, 25.0f};
+    camera_pos = Vector3D{sizeGrid / 2.0f, sizeGrid / 2.0f, 27.0f};
 }
 
 void initGround(const nlohmann::json &data)
@@ -423,6 +451,57 @@ void initGrayBuilding()
     gray_building.changeNature(GL_TRIANGLES);
 }
 
+void randomCloud1Pos(const nlohmann::json &data)
+{
+    const auto sizeGrid = data["size_grid"].get<int>();
+    cloud_1_pos = Vector3D{0.0f, randomFloat(0.0f, CELL_SIZE * sizeGrid - 15.0f), 0.0f};
+}
+
+void randomCloud1Speed()
+{
+    cloud_1_speed = randomFloat(0.1f, 0.4f);
+}
+
+void initCloud1(const nlohmann::json &data)
+{
+    const auto sizeGrid = data["size_grid"].get<int>();
+
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{-15.0f, 0.0f, 36.5f}, 15.0f, 1.5f, 15.0f);
+    cloud_1.initShape(in_coord);
+    cloud_1.changeNature(GL_TRIANGLES);
+
+    cloud_1_max_y_pos = CELL_SIZE * sizeGrid + 15.0f;
+    randomCloud1Pos(data);
+    randomCloud1Speed();
+}
+
+void randomCloud2Pos(const nlohmann::json &data)
+{
+    const auto sizeGrid = data["size_grid"].get<int>();
+    cloud_2_pos = Vector3D{0.0f, randomFloat(0.0f, CELL_SIZE * sizeGrid - 25.0f - CELL_SIZE), 0.0f};
+}
+
+void randomCloud2Speed()
+{
+    cloud_2_speed = randomFloat(0.1f, 0.2f);
+}
+
+void initCloud2(const nlohmann::json &data)
+{
+    const auto sizeGrid = data["size_grid"].get<int>();
+
+    std::vector<float> in_coord{};
+    add_rectangle_triangles(in_coord, Vector3D{-25.0f, 0.0f, 35.0f}, 25.0f, 1.5f, 25.0f);
+    add_rectangle_triangles(in_coord, Vector3D{-CELL_SIZE, 25.0f, 35.0f}, 20.0f, 1.5f, CELL_SIZE);
+    cloud_2.initShape(in_coord);
+    cloud_2.changeNature(GL_TRIANGLES);
+
+    cloud_2_max_y_pos = CELL_SIZE * sizeGrid + -25.0f;
+    randomCloud2Pos(data);
+    randomCloud2Speed();
+}
+
 void initScene(const nlohmann::json &data)
 {
     /* Camera */
@@ -462,6 +541,10 @@ void initScene(const nlohmann::json &data)
     /* Building */
     initBlackBuilding();
     initGrayBuilding();
+
+    /* Clouds */
+    initCloud1(data);
+    initCloud2(data);
 }
 
 bool initGrassTexture()
@@ -998,6 +1081,50 @@ void draw_sets()
     draw_buildings();
 }
 
+void drawCloud1(const nlohmann::json &data)
+{
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{cloud_1_pos.x + cloud_1_anim, cloud_1_pos.y, cloud_1_pos.z});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.9f, 0.9f, 0.9f);
+    cloud_1.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    cloud_1_anim += cloud_1_speed;
+    if (cloud_1_anim > cloud_1_max_y_pos)
+    {
+        cloud_1_anim = 0.0f;
+        randomCloud1Pos(data);
+        randomCloud1Speed();
+    }
+}
+
+void drawCloud2(const nlohmann::json &data)
+{
+    myEngine.mvMatrixStack.pushMatrix();
+    myEngine.mvMatrixStack.addTranslation(Vector3D{cloud_2_pos.x + cloud_2_anim, cloud_2_pos.y, cloud_2_pos.z});
+    myEngine.updateMvMatrix();
+    myEngine.setFlatColor(0.9f, 0.9f, 0.9f);
+    cloud_2.drawShape();
+    myEngine.mvMatrixStack.popMatrix();
+    myEngine.updateMvMatrix();
+
+    cloud_2_anim += cloud_2_speed;
+    if (cloud_2_anim > cloud_1_max_y_pos)
+    {
+        cloud_2_anim = 0.0f;
+        randomCloud2Pos(data);
+        randomCloud2Speed();
+    }
+}
+
+void draw_clouds(const nlohmann::json &data)
+{
+    drawCloud1(data);
+    drawCloud2(data);
+}
+
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
@@ -1005,4 +1132,5 @@ void renderScene(const nlohmann::json &data)
     drawStation(data);
     drawTrain(data);
     draw_sets();
+    draw_clouds(data);
 }
