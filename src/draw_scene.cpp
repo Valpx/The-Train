@@ -6,6 +6,9 @@
 #include "glbasimac/glbi_texture.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include "tools/stb_image.h"
+#include <utility>
+#include <algorithm>
+#include <random>
 
 /* Camera */
 Vector3D camera_pos;
@@ -70,6 +73,7 @@ GLBI_Convex_2D_Shape trunk{3};
 static const float LEAF_WIDTH = 7.0f;
 static const float LEAF_HEIGHT = 9.0f;
 GLBI_Convex_2D_Shape leaf{3};
+std::vector<std::pair<int, int>> tree_pos{};
 
 /* Building */
 static const int BUILDING_SIZE = 10;
@@ -78,6 +82,7 @@ static const float BLACK_BUILDING_WIDTH = 6.0f;
 GLBI_Convex_2D_Shape black_building{3};
 static const float GRAY_BUILDING_WIDTH = 10.0f;
 GLBI_Convex_2D_Shape gray_building{3};
+std::vector<std::pair<int, int>> building_pos{};
 
 stbi_uc *img;
 GLBI_Texture grass_texture;
@@ -127,6 +132,41 @@ void add_rectangle_triangles(std::vector<float> &in_coord, const Vector3D &origi
 }
 
 /* ---INITIALIZATION--- */
+
+void init_set_positions(const nlohmann::json &data)
+{
+    const auto sizeGrid = data["size_grid"].get<int>();
+    std::vector<std::pair<int, int>> set_pos{};
+    for (auto y = 0; y < sizeGrid; y++)
+        for (auto x = 0; x < sizeGrid; x++)
+            set_pos.emplace_back(x, y);
+
+    auto origin = data["origin"].get<std::pair<int, int>>();
+    const auto path = data["path"].get<std::vector<std::pair<int, int>>>();
+    set_pos.erase(
+        std::remove_if(set_pos.begin(), set_pos.end(), [&origin, &path](const std::pair<int, int> &p)
+                       { return p == origin || std::find(path.begin(), path.end(), p) != path.end(); }),
+        set_pos.end());
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(2, 5);
+    std::shuffle(set_pos.begin(), set_pos.end(), gen);
+
+    int tree_count = dist(gen);
+    for (int i = 0; i < tree_count && !set_pos.empty(); i++)
+    {
+        tree_pos.push_back(set_pos.back());
+        set_pos.pop_back();
+    }
+
+    int building_count = dist(gen);
+    for (int i = 0; i < building_count && !set_pos.empty(); i++)
+    {
+        building_pos.push_back(set_pos.back());
+        set_pos.pop_back();
+    }
+}
 
 void initCamera(const nlohmann::json &data)
 {
@@ -378,6 +418,8 @@ void initScene(const nlohmann::json &data)
 {
     /* Camera */
     initCamera(data);
+
+    init_set_positions(data);
 
     /* Ground */
     initGround(data);
@@ -918,8 +960,7 @@ void draw_building()
 void renderScene(const nlohmann::json &data)
 {
     drawGround();
-    // drawTracks(data);
-    // drawStation(data);
-    // drawTrain(data);
-    draw_building();
+    drawTracks(data);
+    drawStation(data);
+    drawTrain(data);
 }
