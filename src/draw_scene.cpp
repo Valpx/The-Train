@@ -9,6 +9,15 @@
 #include <utility>
 #include <algorithm>
 #include <random>
+#include <unordered_set>
+
+struct PairHash
+{
+    std::size_t operator()(const std::pair<int, int> &p) const
+    {
+        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
+    }
+};
 
 /* Camera */
 Vector3D camera_pos;
@@ -142,10 +151,10 @@ void init_set_positions(const nlohmann::json &data)
             set_pos.emplace_back(x, y);
 
     auto origin = data["origin"].get<std::pair<int, int>>();
-    const auto path = data["path"].get<std::vector<std::pair<int, int>>>();
+    const auto path = data["path"].get<std::unordered_set<std::pair<int, int>, PairHash>>();
     set_pos.erase(
         std::remove_if(set_pos.begin(), set_pos.end(), [&origin, &path](const std::pair<int, int> &p)
-                       { return p == origin || std::find(path.begin(), path.end(), p) != path.end(); }),
+                       { return p == origin || path.find(p) != path.end(); }),
         set_pos.end());
 
     std::random_device rd;
