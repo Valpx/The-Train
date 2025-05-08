@@ -14,6 +14,7 @@ static const float Z_FAR = 500.0f;
 extern Vector3D camera_pos;
 extern Vector3D camera_front;
 extern Vector3D camera_up;
+extern bool animate;
 
 /* OpenGL Engine */
 extern GLBI_Engine myEngine;

@@ -73,6 +73,11 @@ void onKey(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods
             camera_pos += camera_front * CAMERA_SPEED;
             break;
 
+        /* Enable/Disable animations */
+        case GLFW_KEY_SPACE:
+            animate = !animate;
+            break;
+
         /* Quitter */
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GLFW_TRUE);

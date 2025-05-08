@@ -24,6 +24,9 @@ Vector3D camera_pos;
 Vector3D camera_front;
 Vector3D camera_up{0.0f, 0.0f, 1.0f};
 
+/* ANIMATION */
+bool animate = true;
+
 /* Ground */
 static const float CELL_SIZE = 10.0f;
 StandardMesh *ground = NULL;
@@ -1091,6 +1094,9 @@ void drawCloud1(const nlohmann::json &data)
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
 
+    if (!animate)
+        return;
+
     cloud_1_anim += cloud_1_speed;
     if (cloud_1_anim > cloud_1_max_y_pos)
     {
@@ -1109,6 +1115,9 @@ void drawCloud2(const nlohmann::json &data)
     cloud_2.drawShape();
     myEngine.mvMatrixStack.popMatrix();
     myEngine.updateMvMatrix();
+
+    if (!animate)
+        return;
 
     cloud_2_anim += cloud_2_speed;
     if (cloud_2_anim > cloud_1_max_y_pos)
